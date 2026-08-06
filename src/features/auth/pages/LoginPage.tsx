@@ -24,7 +24,10 @@ export const LoginPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
-  const requiresTenantSlug = loginConfig?.requiresTenantSlug ?? true;
+  // Matches the backend's default (AuthOptions.EmailUniquenessScope = Global): the Organization
+  // field stays hidden until /auth/login-config actually says a tenant slug is required, instead
+  // of flashing in while the request is still loading.
+  const requiresTenantSlug = loginConfig?.requiresTenantSlug ?? false;
 
   const from = (location.state as any)?.from?.pathname || AppConfig.auth.defaultRedirect;
 

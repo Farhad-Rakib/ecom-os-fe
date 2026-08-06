@@ -21,6 +21,16 @@ import { SiteSettingsPage } from '../../features/site-settings/pages/SiteSetting
 import { SystemSettingsPage } from '../../features/system-settings/pages/SystemSettingsPage';
 import { AuditLogsPage } from '../../features/audit-logs/pages/AuditLogsPage';
 import { FeatureFlagsPage } from '../../features/feature-flags/pages/FeatureFlagsPage';
+import { TaxonomiesPage } from '../../features/catalog/pages/TaxonomiesPage';
+import { CategoriesPage } from '../../features/catalog/pages/CategoriesPage';
+import { BrandsPage } from '../../features/catalog/pages/BrandsPage';
+import { ProductsPage } from '../../features/catalog/pages/ProductsPage';
+import { ProductEditorPage } from '../../features/catalog/pages/ProductEditorPage';
+import { AttributesPage } from '../../features/catalog/pages/AttributesPage';
+import { AttributeSetsPage } from '../../features/catalog/pages/AttributeSetsPage';
+import { SizeChartsPage } from '../../features/catalog/pages/SizeChartsPage';
+import { WarehousesPage } from '../../features/catalog/pages/WarehousesPage';
+import { InventoryPage } from '../../features/catalog/pages/InventoryPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 
@@ -101,6 +111,50 @@ export const router = createBrowserRouter([
       {
         path: 'feature-flags',
         element: <PermissionGuard permissions={['feature-flags.read']}><FeatureFlagsPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/taxonomies',
+        element: <PermissionGuard permissions={['catalog-taxonomy.manage']}><TaxonomiesPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/categories',
+        element: <PermissionGuard permissions={['catalog-taxonomy.manage']}><CategoriesPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/brands',
+        element: <PermissionGuard permissions={['catalog-taxonomy.manage']}><BrandsPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/products',
+        element: <PermissionGuard permissions={['catalog-products.manage']}><ProductsPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/products/new',
+        element: <PermissionGuard permissions={['catalog-products.manage']}><ProductEditorPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/products/:id',
+        element: <PermissionGuard permissions={['catalog-products.manage']}><ProductEditorPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/attributes',
+        element: <PermissionGuard permissions={['catalog-attributes.manage']}><AttributesPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/attribute-sets',
+        element: <PermissionGuard permissions={['catalog-attributes.manage']}><AttributeSetsPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/size-charts',
+        element: <PermissionGuard permissions={['catalog-products.manage']}><SizeChartsPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/warehouses',
+        element: <PermissionGuard permissions={['catalog-inventory.manage']}><WarehousesPage /></PermissionGuard>,
+      },
+      {
+        path: 'catalog/inventory',
+        element: <PermissionGuard permissions={['catalog-inventory.manage']}><InventoryPage /></PermissionGuard>,
       },
     ],
   },
