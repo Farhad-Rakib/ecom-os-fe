@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2, UploadCloud, Archive } from 'lucide-react';
+import { Pencil, Trash2, UploadCloud, Archive, Send } from 'lucide-react';
 import { DataTable, Column, RowAction } from '../../../components/table/DataTable';
 import { ConfirmDialog } from '../../../components/ui/Dialog/ConfirmDialog';
 import { toast } from '../../../components/ui/Toast/toast.store';
@@ -20,7 +20,7 @@ export interface ProductVariantDto {
   id: number;
   sku: string;
   barcode: string | null;
-  status: 'Draft' | 'Published' | 'Archived';
+  status: 'Draft' | 'PendingReview' | 'Published' | 'Archived';
   basePrice: number;
   compareAtPrice: number | null;
   costPrice: number | null;
@@ -83,7 +83,7 @@ export interface ProductDto {
   brandId: number | null;
   brandName: string | null;
   productTypeId: number;
-  status: 'Draft' | 'Published' | 'Archived';
+  status: 'Draft' | 'PendingReview' | 'Published' | 'Archived';
   countryOfOrigin: string | null;
   weightKg: number | null;
   lengthCm: number | null;
@@ -190,6 +190,7 @@ export interface ProductUpdateDto extends ProductWriteDto {
   seoTitle: string;
   seoDescription: string;
   canonicalUrl: string | null;
+  attributeSetId: number | null;
 }
 
 class ProductApi extends BaseRepository {
@@ -221,6 +222,12 @@ class ProductApi extends BaseRepository {
 
   async update(id: number, dto: ProductUpdateDto): Promise<ProductDto> {
     const res = await this.put<ApiResponse<ProductDto>>(`/${id}`, dto);
+    if (!res.success) throw new Error(res.message);
+    return res.data;
+  }
+
+  async submitForReview(id: number): Promise<ProductDto> {
+    const res = await this.post<ApiResponse<ProductDto>>(`/${id}/submit-for-review`);
     if (!res.success) throw new Error(res.message);
     return res.data;
   }
@@ -361,6 +368,7 @@ export const productMediaUploadApi = new ProductMediaUploadApi();
 
 const statusBadgeClasses: Record<ProductDto['status'], string> = {
   Draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+  PendingReview: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   Published: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   Archived: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 };
@@ -384,6 +392,15 @@ export const ProductsPage: React.FC = () => {
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['catalog', 'products'] });
+
+  const submitForReviewMutation = useMutation({
+    mutationFn: (id: number) => productApi.submitForReview(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Product submitted for review');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err.message || 'Failed to submit product for review'),
+  });
 
   const publishMutation = useMutation({
     mutationFn: (id: number) => productApi.publish(id),
@@ -445,6 +462,13 @@ export const ProductsPage: React.FC = () => {
 
   const rowActions: RowAction<ProductDto>[] = [
     { icon: Pencil, label: 'Edit', onClick: (product) => navigate(`/catalog/products/${product.id}`), variant: 'primary' },
+    {
+      icon: Send,
+      label: 'Submit for Review',
+      onClick: (product) => submitForReviewMutation.mutate(product.id),
+      variant: 'secondary',
+      show: (product) => product.status === 'Draft',
+    },
     {
       icon: UploadCloud,
       label: 'Publish',

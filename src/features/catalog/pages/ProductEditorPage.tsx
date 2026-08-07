@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, Loader2, UploadCloud, Archive, X } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, UploadCloud, Archive, Send, X } from 'lucide-react';
 import { Loader } from '../../../components/ui/Loader/Loader';
 import { ErrorState } from '../../../components/ui/ErrorState/ErrorState';
 import { toast } from '../../../components/ui/Toast/toast.store';
@@ -9,6 +9,7 @@ import { useAuthStore } from '../../auth/store/auth.store';
 import { taxonomyApi, TaxonomyDto } from './TaxonomiesPage';
 import { categoryApi } from './CategoriesPage';
 import { brandApi, BrandDto } from './BrandsPage';
+import { attributeSetApi, AttributeSetDto } from './AttributeSetsPage';
 import {
   productApi,
   productMediaUploadApi,
@@ -165,13 +166,14 @@ interface FormState {
   canonicalUrl: string;
   categories: CategorySelection[];
   primaryCategoryId: number | null;
+  attributeSetId: number | null;
 }
 
 const emptyForm: FormState = {
   sku: '', slug: '', name: '', shortDescription: '', description: '', brandId: null, productTypeId: null,
   basePrice: '', compareAtPrice: '', costPrice: '', currency: 'USD', trackInventory: false,
   countryOfOrigin: '', weightKg: '', lengthCm: '', widthCm: '', heightCm: '', shippingClass: '',
-  seoTitle: '', seoDescription: '', canonicalUrl: '', categories: [], primaryCategoryId: null,
+  seoTitle: '', seoDescription: '', canonicalUrl: '', categories: [], primaryCategoryId: null, attributeSetId: null,
 };
 
 const toFormState = (product: ProductDto): FormState => ({
@@ -198,9 +200,15 @@ const toFormState = (product: ProductDto): FormState => ({
   canonicalUrl: product.canonicalUrl ?? '',
   categories: product.categories.map((c) => ({ categoryId: c.categoryId, categoryName: c.categoryName })),
   primaryCategoryId: product.categories.find((c) => c.isPrimary)?.categoryId ?? null,
+  attributeSetId: product.attributeSetId,
 });
 
 const toNullableNumber = (value: string): number | null => (value.trim() === '' ? null : Number(value));
+
+// Mirrors the server's AllowedImageContentTypes (ProductService.cs) -- the file input's `accept`
+// attribute only steers the OS picker, it doesn't stop a drag-and-drop or a renamed file, so this
+// is the actual client-side gate.
+const ALLOWED_IMAGE_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 export const ProductEditorPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -223,6 +231,7 @@ export const ProductEditorPage: React.FC = () => {
 
   const { data: brandsPage } = useQuery({ queryKey: ['catalog', 'brands', 'all'], queryFn: () => brandApi.getPaged({ page: 1, pageSize: 200 }) });
   const { data: productTypes = [] } = useQuery({ queryKey: ['catalog', 'product-types'], queryFn: () => productApi.getProductTypes() });
+  const { data: attributeSets = [] } = useQuery({ queryKey: ['catalog', 'attribute-sets'], queryFn: () => attributeSetApi.getAll() });
 
   useEffect(() => {
     if (product) setForm(toFormState(product));
@@ -279,6 +288,7 @@ export const ProductEditorPage: React.FC = () => {
         seoTitle: form.seoTitle.trim(),
         seoDescription: form.seoDescription.trim(),
         canonicalUrl: form.canonicalUrl.trim() || null,
+        attributeSetId: form.attributeSetId,
       };
       return productApi.update(productId!, dto);
     },
@@ -288,6 +298,16 @@ export const ProductEditorPage: React.FC = () => {
       toast.success('Product updated successfully');
     },
     onError: (err: any) => toast.error(err?.response?.data?.message || err.message || 'Failed to update product'),
+  });
+
+  const submitForReviewMutation = useMutation({
+    mutationFn: () => productApi.submitForReview(productId!),
+    onSuccess: () => {
+      invalidateList();
+      invalidateDetail();
+      toast.success('Product submitted for review');
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err.message || 'Failed to submit product for review'),
   });
 
   const publishMutation = useMutation({
@@ -321,6 +341,10 @@ export const ProductEditorPage: React.FC = () => {
 
   const handleUpload = async (file: File) => {
     if (!productId) return;
+    if (!ALLOWED_IMAGE_CONTENT_TYPES.has(file.type)) {
+      toast.error('Only JPEG, PNG, WebP, or GIF images are allowed.');
+      return;
+    }
     setUploading(true);
     try {
       await productMediaUploadApi.upload(productId, file, form.name, product?.media.length ?? 0);
@@ -474,6 +498,21 @@ export const ProductEditorPage: React.FC = () => {
             onSetPrimary={(categoryId) => setForm((prev) => ({ ...prev, primaryCategoryId: categoryId }))}
           />
         </div>
+        {isEdit && (
+          <div className="space-y-1">
+            <label className={labelClasses}>Attribute Set Override</label>
+            <select
+              className={inputClasses}
+              value={form.attributeSetId ?? ''}
+              onChange={(e) => setForm({ ...form, attributeSetId: e.target.value ? Number(e.target.value) : null })}
+            >
+              <option value="">Use category's default attribute set</option>
+              {attributeSets.map((s: AttributeSetDto) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </section>
 
       {/* Specifications -- Task Group 03, schema-driven from the product's effective attribute set */}
@@ -616,6 +655,16 @@ export const ProductEditorPage: React.FC = () => {
             </p>
           )}
           <div className="flex gap-3">
+            {product.status === 'Draft' && (
+              <button
+                type="button"
+                onClick={() => submitForReviewMutation.mutate()}
+                disabled={submitForReviewMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" /> Submit for Review
+              </button>
+            )}
             {product.status !== 'Published' && canPublish && (
               <button
                 type="button"

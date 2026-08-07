@@ -10,6 +10,7 @@ import { toast } from '../../../components/ui/Toast/toast.store';
 import { BaseRepository } from '../../../core/api/base.repository';
 import { ApiResponse } from '../../../domain/dto/auth.dto';
 import { taxonomyApi } from './TaxonomiesPage';
+import { attributeSetApi, AttributeSetDto } from './AttributeSetsPage';
 
 export interface CategoryDto {
   id: number;
@@ -23,6 +24,7 @@ export interface CategoryDto {
   isActive: boolean;
   seoTitle: string;
   seoDescription: string;
+  attributeSetId: number | null;
 }
 
 interface PagedResultDto<T> {
@@ -42,6 +44,7 @@ interface CategoryWriteDto {
   imageUrl: string | null;
   seoTitle: string;
   seoDescription: string;
+  attributeSetId: number | null;
 }
 
 // A tree level rarely has more than a couple hundred siblings, so each level is fetched in one
@@ -87,9 +90,12 @@ interface CategoryFormValues {
   imageUrl: string;
   seoTitle: string;
   seoDescription: string;
+  attributeSetId: number | null;
 }
 
-const emptyForm: CategoryFormValues = { slug: '', name: '', description: '', imageUrl: '', seoTitle: '', seoDescription: '' };
+const emptyForm: CategoryFormValues = {
+  slug: '', name: '', description: '', imageUrl: '', seoTitle: '', seoDescription: '', attributeSetId: null,
+};
 
 const CategoryForm: React.FC<{
   initial: CategoryFormValues;
@@ -99,6 +105,7 @@ const CategoryForm: React.FC<{
   onSubmit: (values: CategoryFormValues) => void;
 }> = ({ initial, isEdit, isLoading, onCancel, onSubmit }) => {
   const [form, setForm] = useState(initial);
+  const { data: attributeSets = [] } = useQuery({ queryKey: ['catalog', 'attribute-sets'], queryFn: () => attributeSetApi.getAll() });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +157,20 @@ const CategoryForm: React.FC<{
           onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
           className={inputClasses}
         />
+      </div>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Attribute Set</label>
+        <select
+          value={form.attributeSetId ?? ''}
+          onChange={(e) => setForm({ ...form, attributeSetId: e.target.value ? Number(e.target.value) : null })}
+          className={inputClasses}
+        >
+          <option value="">No default attribute set</option>
+          {attributeSets.map((s: AttributeSetDto) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-500 dark:text-gray-400">Products created in this category get this set's fields by default.</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
@@ -452,6 +473,7 @@ export const CategoriesPage: React.FC = () => {
                 imageUrl: values.imageUrl.trim() || null,
                 seoTitle: values.seoTitle.trim(),
                 seoDescription: values.seoDescription.trim(),
+                attributeSetId: values.attributeSetId,
               })
             }
           />
@@ -469,6 +491,7 @@ export const CategoriesPage: React.FC = () => {
               imageUrl: editCategory.imageUrl ?? '',
               seoTitle: editCategory.seoTitle,
               seoDescription: editCategory.seoDescription,
+              attributeSetId: editCategory.attributeSetId,
             }}
             isEdit
             isLoading={updateMutation.isPending}
@@ -484,6 +507,7 @@ export const CategoriesPage: React.FC = () => {
                   imageUrl: values.imageUrl.trim() || null,
                   seoTitle: values.seoTitle.trim(),
                   seoDescription: values.seoDescription.trim(),
+                  attributeSetId: values.attributeSetId,
                 },
               })
             }

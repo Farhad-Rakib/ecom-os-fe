@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DataTable, Column } from '../../../components/table/DataTable';
+import { Trash2 } from 'lucide-react';
+import { DataTable, Column, RowAction } from '../../../components/table/DataTable';
+import { ConfirmDialog } from '../../../components/ui/Dialog/ConfirmDialog';
 import { Modal } from '../../../components/ui/Modal/Modal';
 import { toast } from '../../../components/ui/Toast/toast.store';
 import { BaseRepository } from '../../../core/api/base.repository';
@@ -28,6 +30,9 @@ class TaxonomyApi extends BaseRepository {
     const res = await this.post<ApiResponse<TaxonomyDto>>('', dto);
     if (!res.success) throw new Error(res.message);
     return res.data;
+  }
+  async remove(id: number): Promise<void> {
+    await this.delete<any>(`/${id}`);
   }
 }
 
@@ -103,6 +108,7 @@ const TaxonomyForm: React.FC<{ isLoading: boolean; onCancel: () => void; onSubmi
 export const TaxonomiesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTaxonomy, setDeleteTaxonomy] = useState<TaxonomyDto | null>(null);
 
   const { data: taxonomies = [], isLoading, error, refetch } = useQuery({
     queryKey: ['catalog', 'taxonomies'],
@@ -119,9 +125,23 @@ export const TaxonomiesPage: React.FC = () => {
     onError: (err: any) => toast.error(err?.response?.data?.message || err.message || 'Failed to create taxonomy'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => taxonomyApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['catalog', 'taxonomies'] });
+      toast.success('Taxonomy deleted successfully');
+      setDeleteTaxonomy(null);
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err.message || 'Failed to delete taxonomy'),
+  });
+
   const columns: Column<TaxonomyDto>[] = [
     { key: 'name', label: 'Name', sortable: true },
     { key: 'key', label: 'Key', width: '200px' },
+  ];
+
+  const rowActions: RowAction<TaxonomyDto>[] = [
+    { icon: Trash2, label: 'Delete', onClick: (taxonomy) => setDeleteTaxonomy(taxonomy), variant: 'danger' },
   ];
 
   return (
@@ -142,6 +162,7 @@ export const TaxonomiesPage: React.FC = () => {
         sortable={false}
         emptyState={{ title: 'No taxonomies found', description: 'Create one to start organizing categories' }}
         actions={{ add: { label: 'Add Taxonomy', onClick: () => setShowAddModal(true) } }}
+        rowActions={rowActions}
         onRetry={() => refetch()}
       />
 
@@ -152,6 +173,16 @@ export const TaxonomiesPage: React.FC = () => {
           onSubmit={(values) => createMutation.mutate(values)}
         />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={deleteTaxonomy !== null}
+        onClose={() => setDeleteTaxonomy(null)}
+        onConfirm={() => deleteTaxonomy !== null && deleteMutation.mutate(deleteTaxonomy.id)}
+        title="Delete Taxonomy"
+        message="Are you sure you want to delete this taxonomy? This will fail if it still has categories."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 };

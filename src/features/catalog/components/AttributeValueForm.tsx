@@ -14,6 +14,8 @@ export interface ProductAttributeValueItemDto {
   dataType: string;
   unit: string | null;
   isRequired: boolean;
+  minValue: number | null;
+  maxValue: number | null;
   options: AttributeOptionDto[];
   textValue: string | null;
   numberValue: number | null;
@@ -149,9 +151,20 @@ export const AttributeValueForm: React.FC<{ productId: number }> = ({ productId 
                     type="number"
                     className={inputClasses}
                     value={value.numberValue ?? ''}
+                    min={item.minValue ?? undefined}
+                    max={item.maxValue ?? undefined}
                     onChange={(e) => setField(item.attributeDefinitionId, { numberValue: e.target.value === '' ? null : Number(e.target.value) })}
                   />
                   {item.unit && <span className="text-sm text-gray-500 whitespace-nowrap">{item.unit}</span>}
+                  {(item.minValue !== null || item.maxValue !== null) && (
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      {item.minValue !== null && item.maxValue !== null
+                        ? `${item.minValue}–${item.maxValue}`
+                        : item.minValue !== null
+                          ? `≥ ${item.minValue}`
+                          : `≤ ${item.maxValue}`}
+                    </span>
+                  )}
                 </div>
               )}
 
