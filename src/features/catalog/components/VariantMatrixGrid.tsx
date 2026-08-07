@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Sparkles } from 'lucide-react';
+import { Trash2, Sparkles, Download } from 'lucide-react';
 import { DataTable, Column } from '../../../components/table/DataTable';
 import { ConfirmDialog } from '../../../components/ui/Dialog/ConfirmDialog';
 import { Modal } from '../../../components/ui/Modal/Modal';
 import { Loader } from '../../../components/ui/Loader/Loader';
 import { toast } from '../../../components/ui/Toast/toast.store';
 import { attributeApi, AttributeDefinitionDto } from '../pages/AttributesPage';
-import { productApi, ProductVariantDto } from '../pages/ProductsPage';
+import { productApi, ProductVariantDto, DigitalAssetWriteDto } from '../pages/ProductsPage';
 
 const inputClasses =
   'px-2 py-1 text-sm border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -92,10 +92,105 @@ const GenerateVariantsModal: React.FC<{ productId: number; onClose: () => void; 
   );
 };
 
+const DigitalAssetModal: React.FC<{ productId: number; variantId: number; onClose: () => void }> = ({ productId, variantId, onClose }) => {
+  const { data: asset, isLoading } = useQuery({
+    queryKey: ['catalog', 'products', productId, 'variants', variantId, 'digital-asset'],
+    queryFn: () => productApi.getDigitalAsset(productId, variantId),
+  });
+
+  const [form, setForm] = useState<DigitalAssetWriteDto | null>(null);
+  const current: DigitalAssetWriteDto = form ?? {
+    fileUrl: asset?.fileUrl ?? '',
+    fileName: asset?.fileName ?? '',
+    maxDownloads: asset?.maxDownloads ?? null,
+    expiryDays: asset?.expiryDays ?? null,
+    licenseKeyPoolId: asset?.licenseKeyPoolId ?? null,
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: () => productApi.saveDigitalAsset(productId, variantId, current),
+    onSuccess: () => {
+      toast.success('Digital asset saved');
+      onClose();
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || err.message || 'Failed to save digital asset'),
+  });
+
+  if (isLoading) return <Loader />;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File URL</label>
+        <input
+          type="text"
+          className={`${inputClasses} w-full`}
+          value={current.fileUrl}
+          onChange={(e) => setForm({ ...current, fileUrl: e.target.value })}
+          placeholder="https://..."
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File Name</label>
+        <input
+          type="text"
+          className={`${inputClasses} w-full`}
+          value={current.fileName}
+          onChange={(e) => setForm({ ...current, fileName: e.target.value })}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Downloads</label>
+          <input
+            type="number"
+            className={`${inputClasses} w-full`}
+            value={current.maxDownloads ?? ''}
+            onChange={(e) => setForm({ ...current, maxDownloads: e.target.value === '' ? null : Number(e.target.value) })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiry (days)</label>
+          <input
+            type="number"
+            className={`${inputClasses} w-full`}
+            value={current.expiryDays ?? ''}
+            onChange={(e) => setForm({ ...current, expiryDays: e.target.value === '' ? null : Number(e.target.value) })}
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">License Key Pool Id</label>
+        <input
+          type="text"
+          className={`${inputClasses} w-full`}
+          value={current.licenseKeyPoolId ?? ''}
+          onChange={(e) => setForm({ ...current, licenseKeyPoolId: e.target.value === '' ? null : e.target.value })}
+        />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={!current.fileUrl || !current.fileName || saveMutation.isPending}
+          onClick={() => saveMutation.mutate()}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const VariantMatrixGrid: React.FC<{ productId: number }> = ({ productId }) => {
   const queryClient = useQueryClient();
   const [showGenerate, setShowGenerate] = useState(false);
   const [deleteVariantId, setDeleteVariantId] = useState<number | null>(null);
+  const [digitalAssetVariantId, setDigitalAssetVariantId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, Partial<ProductVariantDto>>>({});
 
   const { data: variants = [], isLoading, error, refetch } = useQuery({
@@ -116,6 +211,7 @@ export const VariantMatrixGrid: React.FC<{ productId: number }> = ({ productId }
         costPrice: variant.costPrice,
         currency: variant.currency,
         trackInventory: variant.trackInventory,
+        isDigital: variant.isDigital,
         weightKg: variant.weightKg,
         lengthCm: variant.lengthCm,
         widthCm: variant.widthCm,
@@ -212,6 +308,23 @@ export const VariantMatrixGrid: React.FC<{ productId: number }> = ({ productId }
         );
       },
     },
+    {
+      // Task Group 07: marking a variant digital clears its weight/dimensions server-side and
+      // requires a digital asset (set via the row action below) before the product can publish.
+      key: 'isDigital',
+      label: 'Digital',
+      width: '80px',
+      render: (_, variant) => {
+        const draft = getDraft(variant);
+        return (
+          <input
+            type="checkbox"
+            checked={draft.isDigital ?? false}
+            onChange={(e) => setDraft(variant.id, { isDigital: e.target.checked })}
+          />
+        );
+      },
+    },
   ];
 
   return (
@@ -234,6 +347,12 @@ export const VariantMatrixGrid: React.FC<{ productId: number }> = ({ productId }
             variant: 'success',
             show: (variant) => !!drafts[variant.id],
           },
+          {
+            icon: Download,
+            label: 'Digital Delivery',
+            onClick: (variant) => setDigitalAssetVariantId(variant.id),
+            show: (variant) => variant.isDigital,
+          },
           { icon: Trash2, label: 'Delete', onClick: (variant) => setDeleteVariantId(variant.id), variant: 'danger' },
         ]}
         onRetry={() => refetch()}
@@ -241,6 +360,12 @@ export const VariantMatrixGrid: React.FC<{ productId: number }> = ({ productId }
 
       <Modal isOpen={showGenerate} onClose={() => setShowGenerate(false)} title="Generate Variants" size="lg">
         <GenerateVariantsModal productId={productId} onClose={() => setShowGenerate(false)} onGenerated={invalidate} />
+      </Modal>
+
+      <Modal isOpen={digitalAssetVariantId !== null} onClose={() => setDigitalAssetVariantId(null)} title="Digital Delivery" size="md">
+        {digitalAssetVariantId !== null && (
+          <DigitalAssetModal productId={productId} variantId={digitalAssetVariantId} onClose={() => setDigitalAssetVariantId(null)} />
+        )}
       </Modal>
 
       <ConfirmDialog

@@ -5,19 +5,28 @@
 EcomOs is a working multi-tenant back-office platform — tenants,
 subscriptions, roles/permissions, menus, feature flags — but has no
 notion of a product. A tenant can log in and administer their account
-today, but cannot describe, organize, or publish anything sellable, and
-therefore cannot run a storefront. Any single, hardcoded product shape
-(e.g. apparel-only fields) would force tenants outside that one
-vertical into workarounds or a schema fork per domain.
+today, but cannot describe, organize, or configure anything sellable.
+Any single, hardcoded product shape (e.g. apparel-only fields) would
+force tenants outside that one vertical into workarounds or a schema
+fork per domain.
+
+**Scope note (narrowed 2026-08-06):** this PRD covers *product
+management and configuration* only — the data model and admin
+workflows for defining what a product is (its taxonomy, its fields,
+its SKUs/variants) and publishing it. Adjacent commerce concerns
+(stock/inventory, pricing/tax, translation, reviews, and the public
+read API) were originally scoped as part of this same PRD but have
+been descoped to be planned and owned separately — see "Descoped from
+this PRD" below. Where those areas already have shipped code (Task
+Group 05 — Multi-Location Inventory), that implementation is
+unaffected; only this document's forward-looking scope changed.
 
 ## Target users
 
-- **Tenant merchandisers/admins** — create, organize, and publish
-  catalog data through the existing admin back-office (`ecom-os-fe`).
-- **Storefront shoppers** — browse, filter, search, and view product
-  detail on a tenant's public store, which reads this data through a
-  read-only API. (The storefront application itself is a separate,
-  not-yet-built consumer — see `tech-stack.md`.)
+- **Tenant merchandisers/admins** — create, organize, and configure
+  catalog data through the existing admin back-office (`ecom-os-fe`):
+  taxonomy, brands, product records, attribute schemas, and variant
+  SKU generation.
 
 ## Why this approach
 
@@ -38,10 +47,16 @@ rather than per-deployment forks.
 - Order management and post-purchase workflows
 - Supplier / purchase-order / procurement workflows
 - POS or other omnichannel inventory synchronization
-- Marketing automation or a coupon engine (beyond the scheduled-sale
-  pricing in Feature 6)
+- Marketing automation or a coupon engine
 - B2B quote/contract negotiation workflows
 - AI-generated or auto-translated product content
+- Multi-location inventory / stock reservation (already implemented
+  under the original scope as Task Group 05; now owned outside this
+  PRD going forward — see "Descoped from this PRD")
+- Pricing overrides, tax computation, and scheduled sales
+- Content localization/translation
+- Customer reviews & ratings
+- The public storefront/read API
 
 ## Features
 
@@ -86,12 +101,11 @@ attributes eventually get.
 - A single default sellable variant with SKU, barcode, price, currency
 - Image/video gallery
 - Lifecycle: Draft → Pending Review → Published → Archived/Discontinued
-- Single-warehouse stock quantity
 
 **Out of scope:**
 - Multiple variants per product (Feature 4)
-- Multiple warehouses (Feature 5)
-- Scheduled or tiered pricing (Feature 6)
+- Stock/inventory tracking (descoped — see "Descoped from this PRD")
+- Scheduled or tiered pricing (descoped — see "Descoped from this PRD")
 
 **Acceptance criteria:**
 1. A product cannot be published without a name, price, and at least
@@ -99,9 +113,7 @@ attributes eventually get.
 2. A product's status can move Draft → Pending Review → Published, and
    Published → Archived; a shopper never sees anything but Published.
 3. Editing a published product does not unpublish it.
-4. A product page shows in-stock/out-of-stock status based on
-   quantity.
-5. A product can be permanently deleted only from Draft or Archived
+4. A product can be permanently deleted only from Draft or Archived
    status.
 
 ### 3. Configurable Attribute Sets
@@ -133,87 +145,30 @@ a laptop, and a jar of pickles without a code change per vertical.
 5. Two products in different categories with different attribute sets
    coexist without interfering with each other's forms.
 
-### 4. Variants & Merchandising Extras
+### 4. Variant SKU Generation
 
 **Problem:** Many products aren't a single SKU — they come in sizes
-and colors, get bundled, or need optional add-ons.
+and colors that each need their own SKU, price, and identity.
 
 **In scope:**
 - Marking specific attributes as variant-defining to generate a SKU
-  matrix (e.g. Size × Color), each with its own price/stock/images
-- Non-variant paid options (gift wrap, engraving) that don't fork a SKU
-- Bundle/kit products composed of other products
-- Related-product links: cross-sell, up-sell, accessory
-- Category- or brand-scoped size charts
+  matrix (e.g. Size × Color), each combination its own SKU with its
+  own price/status
 
-**Out of scope:**
-- Automatic bundle-price optimization
-- AI-generated related-product suggestions
+**Out of scope (narrowed 2026-08-06 — delivered under the original
+broader scope, now considered a separate merchandising concern, not
+core product configuration):**
+- Non-variant paid options (gift wrap, engraving)
+- Bundle/kit products composed of other products
+- Related-product links (cross-sell, up-sell, accessory)
+- Category- or brand-scoped size charts
+- Per-variant stock (descoped — see "Descoped from this PRD")
 
 **Acceptance criteria:**
 1. Marking Size and Color as variant-defining generates one SKU row
-   per combination, each independently priced and stocked.
-2. An out-of-stock variant doesn't block other variants of the same
-   product from selling.
-3. A non-variant option (e.g. engraving) adds its price to the order
-   line without creating a new SKU.
-4. A bundle product lists its component products and a combined price.
-5. A size chart attached to a category or brand appears on every
-   product it applies to without being re-entered per product.
-
-### 5. Multi-Location Inventory
-
-**Problem:** Tenants fulfilling from more than one location need stock
-tracked and reserved per location, not as one global number.
-
-**In scope:**
-- Multiple warehouses/locations per tenant
-- Per-variant, per-warehouse stock with reserved quantity, reorder
-  point, backorder/preorder flags
-- Lot number and expiry date fields for perishables
-
-**Out of scope:**
-- Automated purchase-order/replenishment workflows
-- Warehouse-to-warehouse transfer orders
-
-**Acceptance criteria:**
-1. The same variant can show different available quantities at two
-   different warehouses.
-2. A backorder-allowed variant stays purchasable at zero stock; a
-   non-backorder variant does not.
-3. Reserved quantity is excluded from what's shown as available.
-4. A variant nearing its reorder point is flagged in the admin UI.
-5. An expiry date on a stock lot is visible to the admin but never
-   exposed to the storefront as a raw field.
-
-### 6. Pricing, Tax & Scheduled Sales
-
-**Problem:** The same SKU can need a different price by channel,
-currency, quantity, or time window.
-
-**In scope:**
-- Tax classes attached to products
-- Price-list overrides of a variant's base price by currency, channel,
-  or customer group
-- Quantity-tiered pricing
-- Scheduled sale windows with automatic start/end
-
-**Out of scope:**
-- Real-time competitor price matching
-- Dynamic/surge pricing
-
-**Acceptance criteria:**
-1. A variant sold in two currencies shows the correct price for each
-   without duplicating the product.
-2. A scheduled sale price is live only between its start and end time,
-   automatically.
-3. A quantity-tiered price applies once order quantity crosses its
-   threshold.
-4. A product's tax class is available wherever tax-inclusive price
-   needs to be displayed (tax computation itself is a checkout
-   concern; this feature only supplies the class).
-5. Removing a price-list override reverts the variant to its base
-   price without manual re-entry.
+   per combination, each independently identified and priced.
+2. Generating variants twice with an overlapping selection doesn't
+   duplicate existing SKU rows.
 
 ### 7. Digital Products
 
@@ -237,50 +192,28 @@ firmware, and license keys need delivery, not shipping.
 3. A digital and a physical variant can exist on the same product
    (e.g. a game with a physical disc and a digital key).
 
-### 8. Localization & Reviews
+## Descoped from this PRD (2026-08-06)
 
-**Problem:** Multi-region tenants need product content in more than
-one language, and shoppers want to see other buyers' feedback.
+These were originally scoped as Features 5, 6, 8, and 9 of this same
+PRD and are numbered here for traceability with existing code
+comments, `decisions.md` entries, and task-group files that cite them
+by number. They are no longer part of this document's forward-looking
+scope and should be planned under their own module/PRD if picked back
+up.
 
-**In scope:**
-- Per-locale translation of name/description/SEO fields
-- Customer star rating + written review with a moderation status
-- A cached average rating shown on the product
-
-**Out of scope:**
-- Automated translation
-- Review-fraud detection beyond a manual moderation queue
-
-**Acceptance criteria:**
-1. A shopper viewing the store in a second configured locale sees
-   translated content where it exists, and falls back to the default
-   locale where it doesn't.
-2. A submitted review does not appear publicly until approved.
-3. A product's displayed average rating updates when a new review is
-   approved.
-
-### 9. Public Storefront Catalog API
-
-**Problem:** None of the above is usable by an actual store until
-there's a public, fast, tenant-scoped way to read it.
-
-**In scope:**
-- A public read API serving only Published + purchasable variants
-- Category/attribute/brand/price-range filtering and search
-- Cached responses, invalidated on catalog changes
-
-**Out of scope:**
-- Cart, checkout, payments, order history (read-only catalog browsing
-  only)
-
-**Acceptance criteria:**
-1. A Draft or Archived product never appears in any storefront
-   response, regardless of caching state.
-2. Filtering by an attribute marked filterable narrows results
-   correctly; a non-filterable attribute isn't offered as a filter.
-3. A price or stock change is reflected in the storefront within a
-   defined freshness window (seconds, not the next deploy).
-4. The API responds correctly when a tenant has zero products in a
-   category (empty state, not an error).
-5. Two tenants' catalogs never leak into each other's storefront
-   responses.
+- **5. Multi-Location Inventory** — warehouses, per-variant/per-warehouse
+  stock, reservations, reorder points, backorder/preorder, lot/expiry
+  tracking. **Already implemented** (Task Group 05, both repos) under
+  the original scope; the code is unaffected by this descoping — see
+  `slipway/reports/task-group-05/developer-report.md`. Stock display
+  and purchasability now live entirely in that implementation, not in
+  this PRD's Feature 2/4 acceptance criteria (trimmed above
+  accordingly).
+- **6. Pricing, Tax & Scheduled Sales** — tax classes, price-list
+  overrides by currency/channel/customer group, quantity-tiered
+  pricing, scheduled sale windows. Not yet implemented.
+- **8. Localization & Reviews** — per-locale translation of product
+  content; customer star ratings and written reviews with moderation.
+  Not yet implemented.
+- **9. Public Storefront Catalog API** — the public, tenant-scoped,
+  cached read API a storefront would consume. Not yet implemented.

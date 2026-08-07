@@ -51,3 +51,7 @@ The size-chart admin page only lets an admin scope a chart to a Brand, not a Cat
 ## 2026-08-06 — implement — task-group-05
 
 `InventoryPage`'s "Add Stock Record" action only appears when the page is pre-filtered to one variant (via the Variants grid's `?variantId=` link), not as a general product/variant picker from the main page. Alternatives considered: a standalone product+variant search on the Inventory page itself, usable with no prior context. Why this one: per this task group's own FE note, `ProductEditorPage`'s Variants section already "links out to per-variant inventory rather than duplicating the grid inline" -- that link is the intended entry point into managing a specific variant's stock, so building a second, parallel discovery path wasn't worth the added UI for this pass.
+
+## 2026-08-06 — plan-product — PRD scope narrowing
+
+`prd.md` is narrowed to pure product management/configuration (Features 1, 2, 3, 4, 7); Features 5, 6, 8, 9 moved to a "Descoped from this PRD" appendix rather than deleted or renumbered away, to preserve traceability with existing code comments and task-group files that already cite specific feature numbers. Task-group spec files `06`, `08`, `09`, `10` (never implemented) were deleted from `slipway/product/task-groups/`; `05-multi-location-inventory.md` was kept since it documents an already-shipped task group, same treatment as its `developer-report.md`.

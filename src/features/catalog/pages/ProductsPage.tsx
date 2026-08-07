@@ -30,11 +30,30 @@ export interface ProductVariantDto {
   // per-warehouse breakdown and to edit stock. ProductVariant no longer carries its own quantity.
   availableQuantity: number;
   isPurchasable: boolean;
+  isDigital: boolean;
   weightKg: number | null;
   lengthCm: number | null;
   widthCm: number | null;
   heightCm: number | null;
   options: VariantOptionDto[];
+}
+
+export interface DigitalAssetDto {
+  id: number;
+  productVariantId: number;
+  fileUrl: string;
+  fileName: string;
+  maxDownloads: number | null;
+  expiryDays: number | null;
+  licenseKeyPoolId: string | null;
+}
+
+export interface DigitalAssetWriteDto {
+  fileUrl: string;
+  fileName: string;
+  maxDownloads: number | null;
+  expiryDays: number | null;
+  licenseKeyPoolId: string | null;
 }
 
 export interface ProductMediaDto {
@@ -246,6 +265,18 @@ class ProductApi extends BaseRepository {
 
   async deleteVariant(productId: number, variantId: number): Promise<void> {
     await this.delete<any>(`/${productId}/variants/${variantId}`);
+  }
+
+  async getDigitalAsset(productId: number, variantId: number): Promise<DigitalAssetDto | null> {
+    const res = await this.get<ApiResponse<DigitalAssetDto | null>>(`/${productId}/variants/${variantId}/digital-asset`);
+    if (!res.success) throw new Error(res.message);
+    return res.data;
+  }
+
+  async saveDigitalAsset(productId: number, variantId: number, dto: DigitalAssetWriteDto): Promise<DigitalAssetDto> {
+    const res = await this.put<ApiResponse<DigitalAssetDto>>(`/${productId}/variants/${variantId}/digital-asset`, dto);
+    if (!res.success) throw new Error(res.message);
+    return res.data;
   }
 
   async getOptions(productId: number): Promise<ProductOptionDto[]> {
