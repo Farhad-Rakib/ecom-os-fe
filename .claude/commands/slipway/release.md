@@ -7,6 +7,8 @@ hard-to-reverse, external side effects — it never takes an action on
 an assumption it didn't verify first, and it never proceeds on
 anything less than every precondition actually being met.
 
+`$ARGUMENTS` is `[<variant>] [<group>]` — both optional; see Step 1.
+
 ## Important guidelines
 
 - Check every precondition before taking a single external action.
@@ -18,18 +20,31 @@ anything less than every precondition actually being met.
 - Never invent a release mechanism the project doesn't already
   document. If you can't find one, stop and ask rather than guessing
   at a deploy command.
+- If this product has more than one architecture variant, each variant
+  typically deploys to its own target (a different service, a
+  different environment) — confirm you're releasing to the target that
+  actually corresponds to `<variant>` before executing anything.
 
 ## Process
 
-### Step 1 — Find the task group
+### Step 1 — Resolve the variant and task group
 
-Use `$ARGUMENTS` as the task group number/slug, or the most recently
-implemented one (the highest-numbered `implement` entry in
-`slipway/memory/progress.md`).
+Read `slipway/product/variants.md`. If it doesn't exist, stop and tell
+the user to run `/plan-product` first.
+
+If `$ARGUMENTS` starts with a slug matching a row in `variants.md`, use
+it and treat the rest as `<group>`. If `variants.md` has exactly one
+row, use that row and treat all of `$ARGUMENTS` as `<group>`. If
+`variants.md` has more than one row and no leading slug matches one,
+list the variants and ask via AskUserQuestion which one to release.
+
+Use `<group>` as given (number/slug), or default to the most recently
+implemented one for this variant (the highest-numbered `implement`
+entry in `slipway/memory/<variant>/progress.md`).
 
 ### Step 2 — Verify preconditions
 
-Read `slipway/reports/task-group-<NN>/review-report.md`,
+Read `slipway/reports/<variant>/task-group-<NN>/review-report.md`,
 `security-review-report.md`, and `qa-report.md`. Confirm each verdict
 is explicitly positive:
 
@@ -45,14 +60,17 @@ command to (re-)run. Do not proceed, do not ask for an override.
 
 Look for the project's own documented release process (a
 `RELEASING.md`, a `CONTRIBUTING.md` section, CI/CD config, or ask the
-user directly if none exists). Use it exactly — this is not the place
-to improve on the process or invent a step it doesn't call for.
+user directly if none exists). If the project documents a separate
+release process per variant (e.g. a different deploy target or
+pipeline per service), use the one for `<variant>` specifically. Use
+it exactly — this is not the place to improve on the process or invent
+a step it doesn't call for.
 
 ### Step 4 — Confirm with the user
 
-Summarize what's about to happen (version/tag, deploy target) and ask
-via AskUserQuestion for explicit go-ahead before taking any external
-action.
+Summarize what's about to happen (variant, version/tag, deploy target)
+and ask via AskUserQuestion for explicit go-ahead before taking any
+external action.
 
 ### Step 5 — Execute
 
@@ -64,7 +82,7 @@ process to undo it.
 ### Step 6 — Write `release-report.md`
 
 ```markdown
-# Release Report: Task Group <NN> — <title>
+# Release Report: Task Group <NN> — <title> (variant: <variant>)
 
 ## Preconditions verified
 [review: approve, security: go, qa: N/M pass — link/reference each report]
@@ -76,14 +94,14 @@ process to undo it.
 [exact command or process to reverse this release]
 ```
 
-Write it to `slipway/reports/task-group-<NN>/release-report.md`.
+Write it to `slipway/reports/<variant>/task-group-<NN>/release-report.md`.
 
 ### Step 7 — Update memory
 
-Append to `slipway/memory/progress.md`:
+Append to `slipway/memory/<variant>/progress.md`:
 `- <date> — release — task-group-<NN>: released <version>`.
-Update `slipway/memory/state.md` (create/replace, it's a snapshot, not
-a log) with the current release version and date.
+Update `slipway/memory/<variant>/state.md` (create/replace, it's a
+snapshot, not a log) with the current release version and date.
 
 ## Rules
 
@@ -98,6 +116,8 @@ a log) with the current release version and date.
 - If a precondition report exists but reviewed a different commit than
   what's currently about to be released, treat that as a failed
   precondition, not a pass.
+- Never release one variant's task group against another variant's
+  deploy target.
 
 ## Tips
 
