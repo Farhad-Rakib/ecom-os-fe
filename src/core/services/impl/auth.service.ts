@@ -1,5 +1,5 @@
 import { BaseRepository } from '../../api/base.repository';
-import { LoginConfigDto, LoginRequestDto, LoginResultDto, RefreshTokenResponseDto, RegisterRequestDto, RegisterResponseDto, ApiResponse } from '../../../domain/dto/auth.dto';
+import { LoginConfigDto, LoginRequestDto, LoginResultDto, RefreshTokenResponseDto, RegisterRequestDto, RegisterResponseDto, ApiResponse, TenantBrandingDto } from '../../../domain/dto/auth.dto';
 import { IAuthService } from '../auth.service.interface';
 
 export interface ForgotPasswordRequestDto {
@@ -21,6 +21,14 @@ export class AuthService extends BaseRepository implements IAuthService {
     const response = await this.get<ApiResponse<LoginConfigDto>>('/login-config');
     if (!response.success) {
       throw new Error(response.message || 'Failed to load login config');
+    }
+    return response.data;
+  }
+
+  async getBranding(): Promise<TenantBrandingDto> {
+    const response = await this.get<ApiResponse<TenantBrandingDto>>('/branding');
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to load branding');
     }
     return response.data;
   }

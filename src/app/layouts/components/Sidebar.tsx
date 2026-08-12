@@ -34,6 +34,11 @@ const iconMap: Record<string, string> = {
   menu: 'Menu',
   flag: 'Flag',
   package: 'Package',
+  store: 'Store',
+  palette: 'Palette',
+  'file-text': 'FileText',
+  'layout-grid': 'LayoutGrid',
+  image: 'Image',
 };
 
 interface SidebarProps {

@@ -31,8 +31,11 @@ API), so this work isn't built for a consumer that doesn't exist yet.
 
 - The customer-facing storefront frontend application itself (a
   separate, future project)
-- A public/tenant-scoped read API for a storefront to consume this
-  configuration (deferred to when that frontend project starts)
+- A public/tenant-scoped read API for Branding, Content Pages, Hero
+  Banner, or Collections (deferred to when that frontend project
+  starts, or to a follow-up feature) — Feature 6 below narrows this
+  boundary for menus and product listing specifically, the rest of
+  this bullet still stands
 - A full drag-and-drop homepage/page builder (the hero banner is one
   fixed section, not an arbitrary layout system)
 - Rule-based or automatic product collections (e.g. auto-populated
@@ -190,3 +193,126 @@ each pointing at something meaningful.
    that a menu item currently references does not leave the admin app
    in a broken state (the affected item is handled gracefully, not
    left silently pointing at nothing with no admin-visible signal).
+
+### 6. Public Storefront Read API — Menus & Product Listing
+
+**Problem:** A future, anonymous, customer-facing storefront frontend
+needs to read this tenant's navigation menu and product catalog to
+render pages, but every existing read endpoint (menus, products)
+requires an authenticated admin session and a permission policy.
+There is currently no way for an unauthenticated consumer to fetch
+"what's in the header/footer menu" or "browse/search this tenant's
+products" at all — this feature builds that missing read surface.
+
+**In scope:**
+- A public, unauthenticated (no login, no API key) read API,
+  tenant-scoped via the request's Host header against the tenant's
+  registered storefront domain — not via an authenticated session or
+  the existing `X-Tenant-Id` header
+- Read access to header and footer navigation menu items, with each
+  item's link target resolved inline to a renderable name and URL,
+  not just its raw target type/id
+- Read access to a paginated, filterable product listing: filter by
+  category, by brand, and by a name/search match
+- Read access to a single product's public detail by slug
+- Only Published products are ever returned; Draft/PendingReview/
+  Archived products are excluded from both listing and detail lookups
+- A menu item whose link target has since been deleted does not break
+  the response — it is omitted or flagged, not left pointing at
+  nothing with no signal (same guarantee the existing admin API
+  already gives)
+
+**Out of scope:**
+- Public endpoints for Branding, Content Pages, Hero Banner, or
+  Collections — this feature covers menus and product listing only;
+  a public surface for the rest is a candidate follow-up feature, not
+  part of this one
+- Any write/mutation capability — this is read-only; the existing
+  authenticated admin API remains the only way to change anything
+- Cart, checkout, pricing/promotions, personalization, or
+  search-relevance tuning beyond a basic name match
+- Rate limiting or issuing API keys/tokens for third-party consumers
+- The storefront frontend application itself — still deferred, per
+  this PRD's existing product-wide scope boundary
+- Changes to the existing authenticated admin endpoints
+  (`ProductsController`, `StorefrontMenusController`, etc.) — this is
+  a new, additive surface, not a replacement or modification of those
+
+**Acceptance criteria:**
+1. An anonymous request (no `Authorization` header) with a `Host`
+   header matching a tenant's registered storefront domain returns
+   that tenant's header (or footer) menu items, each including a
+   resolved, renderable name and URL for its link target rather than
+   just a raw type and id.
+2. A menu item whose link target has since been deleted is handled
+   gracefully in the response (omitted or explicitly flagged) rather
+   than causing an error or appearing as a dead link with no signal.
+3. An anonymous request to the product listing endpoint returns only
+   Published products for the resolved tenant, and supports
+   pagination.
+4. The product listing endpoint supports filtering by category and by
+   brand, usable independently or together.
+5. The product listing endpoint supports a name/search-text filter.
+6. An anonymous request for a single product's detail by slug returns
+   full public-facing product detail when that product is Published,
+   and a not-found response when the slug doesn't exist for that
+   tenant or the product isn't Published.
+7. A request whose `Host` header does not resolve to any tenant's
+   registered domain is rejected with a clear error, not silently
+   defaulted to some tenant or an unhandled server error.
+8. Data belonging to one tenant is never returned for a request that
+   resolves to a different tenant, verified the same way this
+   platform verifies tenant isolation elsewhere.
+9. None of the existing authenticated admin endpoints for products or
+   menus change behavior as a result of this feature.
+
+### 7. Multi-Banner Hero Carousel & Public Storefront Read API — Branding, Hero Banners & Brand Directory
+
+**Problem:** Feature 6 opened an anonymous, Host-resolved read surface
+for menus and products, but explicitly excluded Branding and Hero
+Banner — a real storefront frontend also needs to read the tenant's
+site identity (name, logo, social links) and homepage hero banner(s)
+without an authenticated session, and needs a way to list the brands
+it carries (for a "brands we stock" style display) using data the
+Catalog module already has (`Brand.LogoUrl`). Separately, the
+already-shipped Hero Banner admin feature (Task Group 14) models
+exactly one banner per tenant — but a real storefront homepage needs a
+rotating set of banner slides, not one static image. A single-row
+model can't express that, so this feature also changes Hero Banner
+itself from "the one banner" to an ordered list of banners, before
+exposing it publicly. Mirrored from `ecom-os-be`'s PRD — this repo's
+share of the work is the admin UI for the new list model.
+
+**In scope:**
+- Update the admin Hero Banner UI (`HeroBannerPage.tsx`, Task Group
+  14) from a single-resource content/image upsert form to a list view
+  with create/edit/delete and reorder (up/down, matching this
+  project's established reorder-button convention over drag-and-drop
+  — see Task Group 15's precedent), driven by the backend's new
+  list-shaped Hero Banner API.
+- No other FE change is implied by this feature — the public read
+  endpoints (Branding, hero banners, Brand Directory) are consumed by
+  the still-deferred storefront frontend, not this admin app.
+
+**Out of scope:**
+- Everything Feature 6 already excluded for this repo (this feature
+  adds no new backend-only surface to this repo's scope) — the public
+  API itself, its Contracts/CQRS plumbing, and the Hero Banner
+  single-to-list domain/migration work all live in `ecom-os-be`.
+- Slide autoplay timing, transition style, or any other
+  presentation/animation behavior in a future storefront frontend —
+  not this admin app's concern.
+- Any change to Branding's or Brands' existing admin UI.
+
+**Acceptance criteria:**
+1. An admin can create, edit, delete, and reorder multiple hero
+   banners for a tenant in `HeroBannerPage.tsx` (a list, not a single
+   upsert form), each with an image, headline, subtext, and CTA
+   target — reusing the existing `LinkTargetPicker` component (Task
+   Group 14) unchanged.
+2. A tenant that already had one hero banner configured before this
+   feature sees that banner as the first item of their new list after
+   the change — no data or configuration is lost from the admin's
+   point of view.
+3. `tsc`/`vite build` are clean; no other admin page's behavior
+   changes as a result of this feature.

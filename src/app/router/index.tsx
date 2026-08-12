@@ -31,6 +31,13 @@ import { AttributeSetsPage } from '../../features/catalog/pages/AttributeSetsPag
 import { SizeChartsPage } from '../../features/catalog/pages/SizeChartsPage';
 import { WarehousesPage } from '../../features/catalog/pages/WarehousesPage';
 import { InventoryPage } from '../../features/catalog/pages/InventoryPage';
+import { BrandingPage } from '../../features/storefront/pages/BrandingPage';
+import { ContentPagesPage } from '../../features/storefront/pages/ContentPagesPage';
+import { ContentPageEditorPage } from '../../features/storefront/pages/ContentPageEditorPage';
+import { CollectionsPage } from '../../features/storefront/pages/CollectionsPage';
+import { CollectionEditorPage } from '../../features/storefront/pages/CollectionEditorPage';
+import { HeroBannerPage } from '../../features/storefront/pages/HeroBannerPage';
+import { StorefrontMenusPage } from '../../features/storefront/pages/StorefrontMenusPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 
@@ -155,6 +162,38 @@ export const router = createBrowserRouter([
       {
         path: 'catalog/inventory',
         element: <PermissionGuard permissions={['catalog-inventory.manage']}><InventoryPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/branding',
+        element: <PermissionGuard permissions={['storefront-branding.manage']}><BrandingPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/pages',
+        element: <PermissionGuard permissions={['storefront-pages.manage']}><ContentPagesPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/pages/new',
+        element: <PermissionGuard permissions={['storefront-pages.manage']}><ContentPageEditorPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/pages/:id',
+        element: <PermissionGuard permissions={['storefront-pages.manage']}><ContentPageEditorPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/collections',
+        element: <PermissionGuard permissions={['storefront-collections.manage']}><CollectionsPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/collections/:id',
+        element: <PermissionGuard permissions={['storefront-collections.manage']}><CollectionEditorPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/hero-banner',
+        element: <PermissionGuard permissions={['storefront-banner.manage']}><HeroBannerPage /></PermissionGuard>,
+      },
+      {
+        path: 'storefront/menus',
+        element: <PermissionGuard permissions={['storefront-menus.manage']}><StorefrontMenusPage /></PermissionGuard>,
       },
     ],
   },
