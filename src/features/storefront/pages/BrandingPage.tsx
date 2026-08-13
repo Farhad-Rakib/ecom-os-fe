@@ -17,6 +17,9 @@ export interface StorefrontBrandingDto {
   youtubeUrl: string | null;
   tiktokUrl: string | null;
   linkedinUrl: string | null;
+  productGridColumns: number;
+  announcementText: string | null;
+  announcementEnabled: boolean;
 }
 
 interface BrandingWriteDto {
@@ -28,6 +31,9 @@ interface BrandingWriteDto {
   youtubeUrl: string | null;
   tiktokUrl: string | null;
   linkedinUrl: string | null;
+  productGridColumns: number;
+  announcementText: string | null;
+  announcementEnabled: boolean;
 }
 
 class StorefrontBrandingApi extends BaseRepository {
@@ -82,10 +88,14 @@ interface FormState {
   youtubeUrl: string;
   tiktokUrl: string;
   linkedinUrl: string;
+  productGridColumns: number;
+  announcementText: string;
+  announcementEnabled: boolean;
 }
 
 const emptyForm: FormState = {
   siteTitle: '', tagline: '', facebookUrl: '', instagramUrl: '', twitterUrl: '', youtubeUrl: '', tiktokUrl: '', linkedinUrl: '',
+  productGridColumns: 4, announcementText: '', announcementEnabled: false,
 };
 
 const toFormState = (dto: StorefrontBrandingDto): FormState => ({
@@ -97,6 +107,9 @@ const toFormState = (dto: StorefrontBrandingDto): FormState => ({
   youtubeUrl: dto.youtubeUrl ?? '',
   tiktokUrl: dto.tiktokUrl ?? '',
   linkedinUrl: dto.linkedinUrl ?? '',
+  productGridColumns: dto.productGridColumns,
+  announcementText: dto.announcementText ?? '',
+  announcementEnabled: dto.announcementEnabled,
 });
 
 export const BrandingPage: React.FC = () => {
@@ -156,8 +169,15 @@ export const BrandingPage: React.FC = () => {
       youtubeUrl: form.youtubeUrl.trim() || null,
       tiktokUrl: form.tiktokUrl.trim() || null,
       linkedinUrl: form.linkedinUrl.trim() || null,
+      productGridColumns: form.productGridColumns,
+      announcementText: form.announcementText.trim() || null,
+      announcementEnabled: form.announcementEnabled,
     });
   };
+
+  // Mirrors the backend's write-time rule (ecom-os-be Task Group 18): an enabled announcement
+  // must have text, so the toggle is disabled client-side rather than letting the save fail.
+  const canEnableAnnouncement = form.announcementText.trim().length > 0;
 
   if (isLoading) return <Loader />;
   if (error) return <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>;
@@ -209,6 +229,50 @@ export const BrandingPage: React.FC = () => {
             onChange={(e) => setForm({ ...form, tagline: e.target.value })}
             className={inputClasses}
           />
+        </div>
+
+        <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Storefront Display</h2>
+          <div className="space-y-1">
+            <label className={labelClasses}>Product Grid Columns</label>
+            <select
+              value={form.productGridColumns}
+              onChange={(e) => setForm({ ...form, productGridColumns: Number(e.target.value) })}
+              className={inputClasses}
+            >
+              {[2, 3, 4, 5, 6].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className={labelClasses}>Announcement Bar Message</label>
+            <input
+              type="text"
+              maxLength={300}
+              value={form.announcementText}
+              onChange={(e) => {
+                const value = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  announcementText: value,
+                  announcementEnabled: value.trim().length > 0 ? prev.announcementEnabled : false,
+                }));
+              }}
+              placeholder="e.g. Free shipping over $50"
+              className={inputClasses}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={form.announcementEnabled}
+              disabled={!canEnableAnnouncement}
+              onChange={(e) => setForm({ ...form, announcementEnabled: e.target.checked })}
+              className="rounded border-gray-300 dark:border-gray-600"
+            />
+            Show announcement bar
+          </label>
         </div>
 
         <div className="pt-2 border-t border-gray-200 dark:border-gray-700">

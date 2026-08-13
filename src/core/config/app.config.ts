@@ -7,7 +7,7 @@ export const AppConfig = {
   },
 
   api: {
-    baseURL:'https://localhost:5050/api/v1',
+    baseURL:'https://localhost:5051/api/v1',
     timeout: Number(import.meta.env.VITE_API_TIMEOUT_MS) || 30000,
     withCredentials: true,
   },

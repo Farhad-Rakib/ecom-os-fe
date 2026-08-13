@@ -316,3 +316,118 @@ share of the work is the admin UI for the new list model.
    point of view.
 3. `tsc`/`vite build` are clean; no other admin page's behavior
    changes as a result of this feature.
+
+### 8. Product Grid Column Configuration
+
+**Problem:** Mirrored from `ecom-os-be`'s PRD — this repo's share of
+the work is the admin control for setting the product grid's column
+count; the backend setting storage and public exposure live in
+`ecom-os-be`.
+
+**In scope:**
+- Add a bounded numeric/select control (e.g. 2-6) for product grid
+  column count to the storefront display settings admin UI (likely
+  alongside `BrandingPage.tsx` or its own settings section), wired to
+  the backend's new setting endpoint.
+
+**Out of scope:**
+- Everything Feature 6/7 already excluded for this repo — the public
+  read endpoint and its consumption by an eventual storefront
+  frontend are not this admin app's concern.
+- Per-page-type overrides, pagination/page-size controls, or
+  responsive-breakpoint behavior — same boundary as `ecom-os-be`'s
+  entry.
+
+**Acceptance criteria:**
+1. An admin can set and update the product grid column count from the
+   admin UI, bounded to the same range the backend enforces.
+2. `tsc`/`vite build` are clean; no other admin page's behavior
+   changes as a result of this feature.
+
+### 9. Product Badges (New Arrival, Trending, Discount)
+
+**Problem:** Mirrored from `ecom-os-be`'s PRD — this repo's share of
+the work is the admin toggles for the three product badges on the
+Catalog product admin UI; the `Product` entity change, storage, and
+public exposure live in `ecom-os-be`.
+
+**In scope:**
+- Add three toggles (New Arrival, Trending, Discount) to the Catalog
+  product create/edit UI, wired to the backend's extended product
+  update endpoint.
+
+**Out of scope:**
+- Everything Feature 6 already excluded for this repo — the public
+  product endpoint and its consumption by an eventual storefront
+  frontend are not this admin app's concern.
+- Any visual badge rendering (icon/color/placement) — no storefront
+  frontend exists in this repo to render it.
+
+**Acceptance criteria:**
+1. An admin can toggle any combination of the three badges from the
+   product create/edit form, and the toggled state round-trips
+   correctly on reload.
+2. `tsc`/`vite build` are clean; no other admin page's behavior
+   changes as a result of this feature.
+
+### 10. Storefront Announcement / Promo Bar
+
+**Problem:** Mirrored from `ecom-os-be`'s PRD — this repo's share of
+the work is the announcement text field and enabled toggle on
+`BrandingPage.tsx`; the Branding entity change, storage, and public
+exposure live in `ecom-os-be`.
+
+**In scope:**
+- Add an announcement text input and an enabled/disabled toggle to
+  `BrandingPage.tsx`, wired to the backend's extended Branding update
+  endpoint.
+
+**Out of scope:**
+- Everything Feature 7 already excluded for this repo — the public
+  Branding read endpoint and its consumption by an eventual
+  storefront frontend are not this admin app's concern.
+- Rich text editing, scheduling, or multiple messages — same boundary
+  as `ecom-os-be`'s entry.
+
+**Acceptance criteria:**
+1. An admin can set, edit, clear, and toggle the announcement from
+   `BrandingPage.tsx`, and it round-trips correctly on reload.
+2. `tsc`/`vite build` are clean; no other admin page's behavior
+   changes as a result of this feature.
+
+### 11. Automatic Image Optimization on Upload
+
+**Problem:** Every image uploaded through the platform's shared
+`IFileStorageService` — Storefront Branding logo/favicon, Hero Banner
+slides, and Catalog product images — is stored exactly as uploaded,
+with no resizing, compression, or format conversion. Large,
+unoptimized images slow down both the admin UI and the eventual
+customer-facing storefront.
+
+**In scope:**
+- Automatic server-side processing on upload: resize to a bounded
+  maximum dimension, compress, and convert to a modern format (e.g.
+  WebP) where feasible — applied uniformly to every upload that goes
+  through `IFileStorageService`, not just Storefront-specific
+  uploads, since the service is shared with Catalog.
+- Applies to new uploads going forward only.
+
+**Out of scope:**
+- Any tenant-facing admin toggle or configuration for this — a pure
+  backend processing step, no admin UI, no per-tenant override (this
+  is a deliberate scope decision: this feature doesn't fit the
+  "WordPress admin model" the rest of this PRD is built around).
+- CDN integration, on-the-fly transform-by-URL, or responsive
+  `srcset` generation — this only affects what's stored, not a
+  dynamic delivery pipeline.
+- Reprocessing or backfilling already-stored images.
+- Video or non-image file types.
+
+**Acceptance criteria:**
+1. An oversized image uploaded through any endpoint backed by
+   `IFileStorageService` (Branding logo/favicon, Hero Banner, product
+   images) is stored resized and compressed, not as the raw original.
+2. An already-small/optimized upload isn't unnecessarily degraded
+   further.
+3. Existing upload endpoints' request/response contracts are
+   unchanged — this is a transparent processing step, not a new API.

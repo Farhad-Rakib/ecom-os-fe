@@ -101,6 +101,9 @@ export interface ProductDto {
   media: ProductMediaDto[];
   attributeSetId: number | null;
   variants: ProductVariantDto[];
+  isNewArrival: boolean;
+  isTrending: boolean;
+  isDiscounted: boolean;
 }
 
 export interface ProductTypeDto {
@@ -191,6 +194,9 @@ export interface ProductUpdateDto extends ProductWriteDto {
   seoDescription: string;
   canonicalUrl: string | null;
   attributeSetId: number | null;
+  isNewArrival: boolean;
+  isTrending: boolean;
+  isDiscounted: boolean;
 }
 
 class ProductApi extends BaseRepository {

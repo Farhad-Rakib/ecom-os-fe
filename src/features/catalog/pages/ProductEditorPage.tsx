@@ -167,6 +167,9 @@ interface FormState {
   categories: CategorySelection[];
   primaryCategoryId: number | null;
   attributeSetId: number | null;
+  isNewArrival: boolean;
+  isTrending: boolean;
+  isDiscounted: boolean;
 }
 
 const emptyForm: FormState = {
@@ -174,6 +177,7 @@ const emptyForm: FormState = {
   basePrice: '', compareAtPrice: '', costPrice: '', currency: 'USD', trackInventory: false,
   countryOfOrigin: '', weightKg: '', lengthCm: '', widthCm: '', heightCm: '', shippingClass: '',
   seoTitle: '', seoDescription: '', canonicalUrl: '', categories: [], primaryCategoryId: null, attributeSetId: null,
+  isNewArrival: false, isTrending: false, isDiscounted: false,
 };
 
 const toFormState = (product: ProductDto): FormState => ({
@@ -201,6 +205,9 @@ const toFormState = (product: ProductDto): FormState => ({
   categories: product.categories.map((c) => ({ categoryId: c.categoryId, categoryName: c.categoryName })),
   primaryCategoryId: product.categories.find((c) => c.isPrimary)?.categoryId ?? null,
   attributeSetId: product.attributeSetId,
+  isNewArrival: product.isNewArrival,
+  isTrending: product.isTrending,
+  isDiscounted: product.isDiscounted,
 });
 
 const toNullableNumber = (value: string): number | null => (value.trim() === '' ? null : Number(value));
@@ -289,6 +296,9 @@ export const ProductEditorPage: React.FC = () => {
         seoDescription: form.seoDescription.trim(),
         canonicalUrl: form.canonicalUrl.trim() || null,
         attributeSetId: form.attributeSetId,
+        isNewArrival: form.isNewArrival,
+        isTrending: form.isTrending,
+        isDiscounted: form.isDiscounted,
       };
       return productApi.update(productId!, dto);
     },
@@ -520,6 +530,43 @@ export const ProductEditorPage: React.FC = () => {
         <section className={sectionClasses}>
           <h2 className={sectionTitleClasses}>Specifications</h2>
           <AttributeValueForm productId={productId} />
+        </section>
+      )}
+
+      {/* Badges -- Task Group 19 (ecom-os-be). Edit-mode-only: badges are PUT-only server-side,
+          nothing to toggle before the product has an id. */}
+      {isEdit && productId !== undefined && (
+        <section className={sectionClasses}>
+          <h2 className={sectionTitleClasses}>Badges</h2>
+          <div className="flex flex-wrap gap-6">
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={form.isNewArrival}
+                onChange={(e) => setForm({ ...form, isNewArrival: e.target.checked })}
+                className="rounded border-gray-300 dark:border-gray-600"
+              />
+              New Arrival
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={form.isTrending}
+                onChange={(e) => setForm({ ...form, isTrending: e.target.checked })}
+                className="rounded border-gray-300 dark:border-gray-600"
+              />
+              Trending
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={form.isDiscounted}
+                onChange={(e) => setForm({ ...form, isDiscounted: e.target.checked })}
+                className="rounded border-gray-300 dark:border-gray-600"
+              />
+              Discount
+            </label>
+          </div>
         </section>
       )}
 
