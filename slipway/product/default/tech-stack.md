@@ -1,21 +1,23 @@
 # Tech Stack
 
 Confirmed against `slipway/standards/tech-stack.md` — this module
-extends the existing Olympus-templated stack, no new platform choices.
+extends the existing Olympus-templated stack, no new platform choices
+for this repo specifically (the new storefront application, described
+below, is a different repo's tech-stack decision).
 
 ## Frontend (admin)
 
-React — `ecom-os-fe`, the existing back-office app. Storefront
-Configuration screens (branding, content pages, collections, hero
-banner, navigation menus) are new features added to it.
+React — `ecom-os-fe`, this repo, the existing back-office app. Order
+Management's admin screens (Feature 8) are the only new feature added
+to it for this product — everything customer-facing lives elsewhere.
 
 ## Frontend (storefront)
 
-N/A — not yet built. A separate, tenant-facing application will
-eventually consume this module's configuration; its framework and the
-public read API it would need are both out of scope of this PRD and
-deferred until that project starts (same call the Catalog PRD made for
-its own Feature 9).
+**Next.js (SSR/SSG), a new separate application/repo** — not yet
+created, not this repo. Deliberately kept out of `ecom-os-fe`: a
+public, SEO-sensitive, anonymous-by-default storefront has different
+auth/rendering needs than this authenticated admin app. See
+`ecom-os-be`'s `tech-stack.md` for the full reasoning (mirrored here).
 
 ## Backend
 
