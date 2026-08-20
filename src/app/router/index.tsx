@@ -38,6 +38,9 @@ import { CollectionsPage } from '../../features/storefront/pages/CollectionsPage
 import { CollectionEditorPage } from '../../features/storefront/pages/CollectionEditorPage';
 import { HeroBannerPage } from '../../features/storefront/pages/HeroBannerPage';
 import { StorefrontMenusPage } from '../../features/storefront/pages/StorefrontMenusPage';
+import { OrdersPage } from '../../features/orders/pages/OrdersPage';
+import { OrderDetailPage } from '../../features/orders/pages/OrderDetailPage';
+import { StoreConnectionPage } from '../../features/store-sync/pages/StoreConnectionPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 
@@ -194,6 +197,18 @@ export const router = createBrowserRouter([
       {
         path: 'storefront/menus',
         element: <PermissionGuard permissions={['storefront-menus.manage']}><StorefrontMenusPage /></PermissionGuard>,
+      },
+      {
+        path: 'orders',
+        element: <PermissionGuard permissions={['orders.manage']}><OrdersPage /></PermissionGuard>,
+      },
+      {
+        path: 'orders/:id',
+        element: <PermissionGuard permissions={['orders.manage']}><OrderDetailPage /></PermissionGuard>,
+      },
+      {
+        path: 'store-sync/connection',
+        element: <PermissionGuard permissions={['store-sync.manage']}><StoreConnectionPage /></PermissionGuard>,
       },
     ],
   },

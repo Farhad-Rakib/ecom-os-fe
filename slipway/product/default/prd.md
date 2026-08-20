@@ -70,19 +70,49 @@ reset/profile are entirely the new storefront application's scope.
 
 **Acceptance criteria:** N/A for this repo.
 
-### 4. Real-Time Shipping Rate Calculation
+### 4. Shipping Method Configuration & Selection
 
-**In scope (this repo):** None — backend-only (`ecom-os-be`) plus the
-storefront application's checkout UI.
+**Revision note (2026-08-19):** retitled from "Real-Time Shipping Rate
+Calculation" — see `ecom-os-be`'s `prd.md` for the full reasoning. v1
+is a tenant-admin-managed list of shipping methods with manual costs,
+not a live carrier rate lookup, which means this repo now has real
+scope: the admin CRUD screen. Customer-facing selection at checkout
+remains the storefront application's scope, unchanged.
 
-**Acceptance criteria:** N/A for this repo.
+**In scope (this repo):**
+- New admin CRUD page for shipping methods: create/edit/delete/reorder
+  named methods, each with a cost and an active/inactive toggle
 
-### 5. Real-Time Tax Calculation
+**Acceptance criteria:**
+1. A tenant admin can create, edit, delete, and reorder shipping
+   methods from this admin app, each with its own cost.
+2. Deactivating a method removes it from the list a customer would see
+   at checkout without deleting its history.
+3. `tsc`/`vite build` are clean; no other admin page's behavior
+   changes as a result of this feature.
 
-**In scope (this repo):** None — backend-only (`ecom-os-be`) plus the
-storefront application's checkout UI.
+### 5. Tax Rate Configuration & Calculation
 
-**Acceptance criteria:** N/A for this repo.
+**Revision note (2026-08-19):** retitled from "Real-Time Tax
+Calculation" — see `ecom-os-be`'s `prd.md` for the full reasoning. v1
+is a tenant-admin-managed rate table keyed by Catalog's `ProductType`,
+not a live jurisdiction-aware tax-service lookup, which means this
+repo now has real scope: the admin CRUD screen. Tax calculation at
+checkout remains the storefront application's scope, unchanged.
+
+**In scope (this repo):**
+- New admin CRUD page: set/update a tax rate (percentage) per Catalog
+  `ProductType` (the existing fixed simple/variant/bundle/digital/
+  service set — reuses the existing `GET /products/types` endpoint to
+  list them, doesn't invent a new type list)
+
+**Acceptance criteria:**
+1. A tenant admin can set and update a tax rate for each existing
+   `ProductType`.
+2. A `ProductType` with no rate set displays as 0% (or clearly
+   "unset"), not an error state.
+3. `tsc`/`vite build` are clean; no other admin page's behavior
+   changes as a result of this feature.
 
 ### 6. Checkout
 

@@ -52,6 +52,7 @@ interface DataTableProps<T> {
   };
   rowActions?: RowAction<T>[];
   onRetry?: () => void;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -70,6 +71,7 @@ export function DataTable<T extends Record<string, any>>({
   actions,
   rowActions,
   onRetry,
+  onRowClick,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{
@@ -197,7 +199,8 @@ export function DataTable<T extends Record<string, any>>({
                 data.map((row, rowIndex) => (
                   <tr
                     key={rowIndex}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    onClick={() => onRowClick?.(row)}
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                   >
                     {columns.map((column) => (
                       <td
@@ -226,7 +229,10 @@ export function DataTable<T extends Record<string, any>>({
                               return (
                                 <button
                                   key={idx}
-                                  onClick={() => action.onClick(row)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    action.onClick(row);
+                                  }}
                                   className={`p-2 rounded transition-colors ${
                                     variantStyles[action.variant || 'secondary']
                                   }`}
