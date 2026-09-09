@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, AlertTriangle, Plus } from 'lucide-react';
+import { Save, AlertTriangle, Plus, History } from 'lucide-react';
 import { DataTable, Column } from '../../../components/table/DataTable';
 import { Modal } from '../../../components/ui/Modal/Modal';
 import { toast } from '../../../components/ui/Toast/toast.store';
@@ -27,6 +27,8 @@ export interface InventoryItemDto {
   isAtOrBelowReorderPoint: boolean;
 }
 
+import { StockMovementsDrawer } from '../components/StockMovementsDrawer';
+
 class InventoryApi extends BaseRepository {
   constructor() { super('/inventory'); }
   async getFiltered(params: { variantId?: number; warehouseId?: number; belowReorderPoint?: boolean }): Promise<InventoryItemDto[]> {
@@ -47,6 +49,7 @@ const inputClasses =
   'px-2 py-1 text-sm border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 export const InventoryPage: React.FC = () => {
+  const [movementsFor, setMovementsFor] = useState<InventoryItemDto | null>(null);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const variantId = searchParams.get('variantId') ? Number(searchParams.get('variantId')) : undefined;
@@ -124,7 +127,18 @@ export const InventoryPage: React.FC = () => {
         return <input type="number" className={`${inputClasses} w-20`} value={draft.quantityOnHand} onChange={(e) => setDraft(item, { quantityOnHand: Number(e.target.value) })} />;
       },
     },
-    { key: 'quantityReserved', label: 'Reserved', width: '90px' },
+    {
+      key: 'quantityReserved',
+      label: 'Reserved',
+      width: '90px',
+      // A real number now that orders reserve stock. Highlighted when non-zero so it reads as
+      // "committed to someone" rather than as a column that is always 0.
+      render: (_, item) => (
+        <span className={item.quantityReserved > 0 ? 'font-medium text-amber-700 dark:text-amber-400' : ''}>
+          {item.quantityReserved}
+        </span>
+      ),
+    },
     {
       key: 'availableQuantity',
       label: 'Available',
@@ -133,7 +147,17 @@ export const InventoryPage: React.FC = () => {
       // QA requirement that available quantity, not raw stock, is what's shown across the admin UI.
       render: (_, item) => {
         const draft = getDraft(item);
-        return <span className="font-medium">{draft.quantityOnHand - item.quantityReserved}</span>;
+        const available = draft.quantityOnHand - item.quantityReserved;
+
+        // Rendered as negative, never clamped at zero. An order synced from an external platform
+        // can legitimately oversell, and so can a backorderable variant -- hiding that would make
+        // the one situation this column exists for the one it cannot show.
+        return (
+          <span className={`font-medium ${available < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+            {available}
+            {available < 0 && <span className="ml-1 text-xs font-normal">oversold</span>}
+          </span>
+        );
       },
     },
     {
@@ -223,6 +247,12 @@ export const InventoryPage: React.FC = () => {
         emptyState={{ title: 'No inventory records found', description: 'Inventory rows appear once stock is recorded for a variant at a warehouse' }}
         rowActions={[
           {
+            icon: History,
+            label: 'Stock history',
+            onClick: (item) => setMovementsFor(item),
+            variant: 'secondary',
+          },
+          {
             icon: Save,
             label: 'Save',
             onClick: (item) => saveMutation.mutate(getDraft(item)),
@@ -232,6 +262,14 @@ export const InventoryPage: React.FC = () => {
         ]}
         onRetry={() => refetch()}
       />
+
+      {movementsFor && (
+        <StockMovementsDrawer
+          variantId={movementsFor.productVariantId}
+          variantSku={movementsFor.variantSku}
+          onClose={() => setMovementsFor(null)}
+        />
+      )}
 
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Stock Record" size="sm">
         <form

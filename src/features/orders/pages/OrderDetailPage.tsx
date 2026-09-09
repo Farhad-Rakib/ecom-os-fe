@@ -4,16 +4,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { Loader } from '../../../components/ui/Loader/Loader';
 import { ErrorState } from '../../../components/ui/ErrorState/ErrorState';
+import { DispatchPanel } from '../../courier/pages/DispatchPanel';
+import { RatingBadge } from '../../customers/components/RatingBadge';
+import { recipientApi } from '../../customers/pages/RecipientPage';
 import { toast } from '../../../components/ui/Toast/toast.store';
 import {
   orderApi,
   statusBadgeClasses,
   formatOrderDate,
   buyerLabel,
-  ALLOWED_TRANSITIONS,
+  allowedTransitionsFor,
+  paymentMethodLabel,
   OrderStatus,
   SyncedBadge,
 } from './OrdersPage';
+import { CodSettlementPanel } from '../components/CodSettlementPanel';
+import { OrderNotificationsPanel } from '../components/OrderNotificationsPanel';
 
 const sectionClasses = 'space-y-4 p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900';
 const sectionTitleClasses = 'text-base font-semibold text-gray-900 dark:text-white';
@@ -34,6 +40,18 @@ export const OrderDetailPage: React.FC = () => {
     enabled: Number.isFinite(orderId),
   });
 
+  // The badge below referenced a `recipientRating` that was never defined -- the file did not
+  // compile under the project's own `npm run typecheck` (the root tsconfig has "files": [], so a
+  // bare `tsc --noEmit` checks nothing and never caught it). Wired to the same batch endpoint
+  // OrdersPage uses, with this order as the only id.
+  const { data: ratings } = useQuery({
+    queryKey: ['order-ratings', [orderId]],
+    queryFn: () => recipientApi.getRatingsForOrders([orderId]),
+    enabled: Number.isFinite(orderId),
+  });
+
+  const recipientRating = ratings?.[orderId];
+
   const updateStatusMutation = useMutation({
     mutationFn: (status: OrderStatus) => orderApi.updateStatus(orderId, status),
     onSuccess: () => {
@@ -48,7 +66,9 @@ export const OrderDetailPage: React.FC = () => {
   if (isLoading) return <Loader />;
   if (error || !order) return <ErrorState message={(error as Error)?.message || 'Order not found'} />;
 
-  const allowedNext = ALLOWED_TRANSITIONS[order.status];
+  // Payment-method-aware since fulfilment-readiness-prd: a cash-on-delivery order may ship while
+  // unpaid, and a card order in the same state may not.
+  const allowedNext = allowedTransitionsFor(order.status, order.paymentMethod);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -113,7 +133,17 @@ export const OrderDetailPage: React.FC = () => {
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {order.lineItems.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{item.productName}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                      {item.productName}
+                      {/* The line was accepted beyond available stock. Shown on the line rather
+                          than as an order-level banner because it is a fact about one item, and
+                          fulfilment staff need to know WHICH one they cannot pick. */}
+                      {item.isBackordered && (
+                        <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                          Backordered
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 text-right">{order.currency} {item.unitPrice.toFixed(2)}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 text-right">{item.quantity}</td>
@@ -131,6 +161,23 @@ export const OrderDetailPage: React.FC = () => {
           <h2 className={sectionTitleClasses}>Shipping Address</h2>
           <div className="text-sm text-gray-900 dark:text-gray-100 space-y-1">
             <p>{order.shippingAddress.recipientName}</p>
+            {/* Shown here because it is the field every courier requires, and its absence is the
+                most common reason a dispatch is refused. */}
+            <div className="flex items-center gap-2">
+              <span>{order.shippingAddress.recipientPhone ?? 'No phone number'}</span>
+              {order.shippingAddress.recipientPhoneNormalized && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/recipients?phone=${encodeURIComponent(order.shippingAddress.recipientPhoneNormalized!)}`)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  View history
+                </button>
+              )}
+            </div>
+            {/* The rating sits with the address because that is where the dispatch decision is
+                actually made -- see the DispatchPanel directly below. */}
+            <div className="pt-1"><RatingBadge rating={recipientRating} size="sm" /></div>
             <p>{order.shippingAddress.line1}</p>
             {order.shippingAddress.line2 && <p>{order.shippingAddress.line2}</p>}
             <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p>
@@ -141,6 +188,10 @@ export const OrderDetailPage: React.FC = () => {
         <section className={sectionClasses}>
           <h2 className={sectionTitleClasses}>Summary</h2>
           <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className={labelClasses}>Payment Method</span>
+              <span className={valueClasses}>{paymentMethodLabel[order.paymentMethod]}</span>
+            </div>
             <div className="flex items-center justify-between">
               <span className={labelClasses}>Shipping Method</span>
               <span className={valueClasses}>{order.shippingMethod || '—'}</span>
@@ -164,6 +215,12 @@ export const OrderDetailPage: React.FC = () => {
           </div>
         </section>
       </div>
+
+      <CodSettlementPanel order={order} />
+
+      <DispatchPanel order={order} />
+
+      <OrderNotificationsPanel orderId={order.id} />
     </div>
   );
 };

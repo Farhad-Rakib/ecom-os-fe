@@ -79,6 +79,11 @@ const inputClasses =
   'w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50';
 const labelClasses = 'block text-sm font-medium text-gray-700 dark:text-gray-300';
 
+// Only the keys whose value is a string. `keyof FormState` would also admit productGridColumns
+// (number) and announcementEnabled (boolean), which is what let a boolean reach an <input value>
+// and made this file fail `npm run typecheck`.
+type StringFieldOf<T> = { [K in keyof T]: T[K] extends string ? K : never }[keyof T];
+
 interface FormState {
   siteTitle: string;
   tagline: string;
@@ -285,7 +290,7 @@ export const BrandingPage: React.FC = () => {
               ['youtubeUrl', 'YouTube'],
               ['tiktokUrl', 'TikTok'],
               ['linkedinUrl', 'LinkedIn'],
-            ] as [keyof FormState, string][]).map(([field, label]) => (
+            ] as [StringFieldOf<FormState>, string][]).map(([field, label]) => (
               <div key={field} className="space-y-1">
                 <label className={labelClasses}>{label}</label>
                 <input

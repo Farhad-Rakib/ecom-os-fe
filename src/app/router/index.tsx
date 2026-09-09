@@ -41,6 +41,16 @@ import { StorefrontMenusPage } from '../../features/storefront/pages/StorefrontM
 import { OrdersPage } from '../../features/orders/pages/OrdersPage';
 import { OrderDetailPage } from '../../features/orders/pages/OrderDetailPage';
 import { StoreConnectionPage } from '../../features/store-sync/pages/StoreConnectionPage';
+import { CouriersPage } from '../../features/courier/pages/CouriersPage';
+import { OrderSettingsPage } from '../../features/orders/pages/OrderSettingsPage';
+import { UnsettledCodPage } from '../../features/orders/pages/UnsettledCodPage';
+import { EmailSettingsPage } from '../../features/notifications/pages/EmailSettingsPage';
+import { EmailTemplatesPage } from '../../features/notifications/pages/EmailTemplatesPage';
+import { EmailDeliveryLogPage } from '../../features/notifications/pages/EmailDeliveryLogPage';
+import { CustomersPage } from '../../features/customers/pages/CustomersPage';
+import { CustomerDetailPage } from '../../features/customers/pages/CustomerDetailPage';
+import { RecipientPage } from '../../features/customers/pages/RecipientPage';
+import { CourierConnectionPage } from '../../features/courier/pages/CourierConnectionPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 
@@ -202,9 +212,52 @@ export const router = createBrowserRouter([
         path: 'orders',
         element: <PermissionGuard permissions={['orders.manage']}><OrdersPage /></PermissionGuard>,
       },
+      // Above 'orders/:id' so the intent is obvious on reading. React Router ranks a static
+      // segment over a dynamic one regardless of declaration order, but relying on that silently
+      // would leave the next person wondering whether /orders/settings resolves as an order id.
+      {
+        path: 'orders/settings',
+        element: <PermissionGuard permissions={['orders.settings.manage']}><OrderSettingsPage /></PermissionGuard>,
+      },
+      {
+        path: 'orders/cod',
+        element: <PermissionGuard permissions={['orders.manage']}><UnsettledCodPage /></PermissionGuard>,
+      },
       {
         path: 'orders/:id',
         element: <PermissionGuard permissions={['orders.manage']}><OrderDetailPage /></PermissionGuard>,
+      },
+      {
+        path: 'notifications/settings',
+        element: <PermissionGuard permissions={['notifications.manage']}><EmailSettingsPage /></PermissionGuard>,
+      },
+      {
+        path: 'notifications/templates',
+        element: <PermissionGuard permissions={['notifications.manage']}><EmailTemplatesPage /></PermissionGuard>,
+      },
+      {
+        path: 'notifications/deliveries',
+        element: <PermissionGuard permissions={['notifications.manage']}><EmailDeliveryLogPage /></PermissionGuard>,
+      },
+      {
+        path: 'customers',
+        element: <PermissionGuard permissions={['customers.manage']}><CustomersPage /></PermissionGuard>,
+      },
+      {
+        path: 'customers/:id',
+        element: <PermissionGuard permissions={['customers.manage']}><CustomerDetailPage /></PermissionGuard>,
+      },
+      {
+        path: 'recipients',
+        element: <PermissionGuard permissions={['customers.manage']}><RecipientPage /></PermissionGuard>,
+      },
+      {
+        path: 'couriers',
+        element: <PermissionGuard permissions={['courier.manage']}><CouriersPage /></PermissionGuard>,
+      },
+      {
+        path: 'couriers/:id/connection',
+        element: <PermissionGuard permissions={['courier.manage']}><CourierConnectionPage /></PermissionGuard>,
       },
       {
         path: 'store-sync/connection',
